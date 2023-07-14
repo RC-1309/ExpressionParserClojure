@@ -122,39 +122,3 @@
                  'lse LSE
                  })
 (defn parseObject [line] (parse (read-string line) objectOperations))
-
-(load-file "parser.clj")
-
-(declare *val *priorityZero *priorityOne *priorityTwo)
-( def
-  parseObjectInfix
-  (let
-    [*all-chars (mapv char (range 0 128))
-     *chars (fn [predicate] (+char (apply str (filter predicate *all-chars))))
-     *letter (*chars #(Character/isLetter %))
-     *digit (*chars #(Character/isDigit %))
-     *space (*chars #(Character/isWhitespace %))
-     *ws (+ignore (+star *space))
-     *int (+str (+plus *digit))
-     *word (fn [word] (+str (apply +seq (mapv #(+char (str %)) word))))
-     *number (+seqf (comp Constant read-string str) *ws (+opt (+char "-")) *int (+opt (+char ".")) (+opt *int) *ws)
-     *variable (+map Variable (+str (+plus *letter)))
-     *unary (fn [expr op] (+seqf (objectOperations op) (+ignore (*word (name op))) expr))
-     *binary (fn [expr op] (+seqf (comp (partial apply (objectOperations op)) flatten vector)
-                             expr (+plus (+seq (+ignore (+char (name op))) expr))))
-     *notExpr (+or *variable *number)
-     *add (*binary *priorityOne '+)
-     *sub (*binary *priorityOne '-)
-     *mul (*binary *priorityZero '*)
-     *div (*binary *priorityZero '/)
-     *negate (*unary *notExpr 'negate)
-     *priorityZero (+or *negate)
-     *priorityOne (+or *mul *div)
-     *priorityTwo (+or *add *sub)
-     *val (+or *priorityTwo *number *variable)]
-    (letfn [(*seq [begin parser end]
-              (+seqn 1 (+char begin) (+opt (+seqf cons *ws parser (+star (+seqn 1 *ws (+char ",") *ws parser)))) *ws (+char end)))
-            (*array [] (+map vec (*seq "[" (delay (*value)) "]")))
-            (*value [] *val)]
-      (+parser (+seqn 0 *ws (*value) *ws)))))
-(println (toString (parseObjectInfix "   1 + 2 ")))
